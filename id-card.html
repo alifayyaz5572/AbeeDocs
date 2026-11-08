@@ -130,6 +130,8 @@ try{
  let n=Math.min(5,Math.max(...scans.map(v=>v.found.length)));
  while(entries.length<n)add();
  let match=new Map(),unmatched=[],tentative=[];
+ // Clear previous manual pairing selectors on every new scan.
+ document.querySelectorAll('.manual-pair').forEach(el=>el.remove());
  if(front&&back){
   status.textContent='Reading identity numbers locally to match Front and Back…';
   let frontNums=[],backNums=[];
@@ -158,6 +160,19 @@ try{
   // This is not identity verification; the user must review before printing.
   if(front&&back&&backIndex===undefined&&back.found[i]&&!Array.from(match.values()).includes(i)){
    backIndex=i;tentative.push(i+1);
+  }
+  if(back&&back.found.length){
+   const holder=document.createElement('label');holder.className='field manual-pair';holder.style.cssText='display:block;margin:12px 0;padding:10px;background:#e8f5f2;border-radius:8px;font-weight:700';
+   holder.textContent='Manual pairing — choose BACK for Card '+(i+1)+' ';
+   const picker=document.createElement('select');picker.style.cssText='display:block;width:100%;margin-top:6px';
+   picker.innerHTML='<option value="">No back selected</option>'+back.found.slice(0,5).map((v,j)=>'<option value="'+j+'">Detected BACK '+(j+1)+'</option>').join('');
+   picker.value=backIndex===undefined?'':String(backIndex);
+   picker.onchange=()=>{const j=picker.value===''?-1:Number(picker.value),a=e.back;
+    if(j<0){a.img=null;a.output=null;a.points=[];draw(e,'back');update();return}
+    a.img=back.im;a.output=null;a.points=back.found[j].points.map(p=>({...p}));a.selecting=false;draw(e,'back');crop(e,'back');
+    status.textContent='Manual pairing updated for Card '+(i+1)+'. Please visually verify the card numbers before printing.';
+   };
+   holder.appendChild(picker);$('card-'+e.id).appendChild(holder);
   }
   if(back&&backIndex!==undefined&&back.found[backIndex]){
    let a=e.back;a.img=back.im;a.output=null;a.points=back.found[backIndex].points;a.selecting=false;draw(e,'back');crop(e,'back');
