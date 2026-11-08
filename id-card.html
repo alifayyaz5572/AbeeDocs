@@ -38,18 +38,18 @@ ct.fillStyle='#fff';ct.fillRect(0,0,1600,1100);ct.drawImage(im,ox,oy,iw,ih);
 let src=null,gray=null,blur=null,edges=null,contours=null,hierarchy=null,kernel=null;
 try{
 src=cv.imread(c);gray=new cv.Mat();blur=new cv.Mat();edges=new cv.Mat();contours=new cv.MatVector();hierarchy=new cv.Mat();
-cv.cvtColor(src,gray,cv.COLOR_RGBA2GRAY);cv.GaussianBlur(gray,blur,new cv.Size(3,3),0);cv.Canny(blur,edges,25,95);
-kernel=cv.getStructuringElement(cv.MORPH_RECT,new cv.Size(3,3));cv.morphologyEx(edges,edges,cv.MORPH_CLOSE,kernel);
+cv.cvtColor(src,gray,cv.COLOR_RGBA2GRAY);cv.GaussianBlur(gray,blur,new cv.Size(3,3),0);cv.Canny(blur,edges,18,75);
+kernel=cv.getStructuringElement(cv.MORPH_RECT,new cv.Size(5,5));cv.morphologyEx(edges,edges,cv.MORPH_CLOSE,kernel);
 cv.findContours(edges,contours,hierarchy,cv.RETR_LIST,cv.CHAIN_APPROX_SIMPLE);
 let candidates=[];
 for(let i=0;i<contours.size();i++){
 let contour=contours.get(i),per=cv.arcLength(contour,true),area=Math.abs(cv.contourArea(contour)),approx=new cv.Mat();
-if(area>Math.max(1200,iw*ih*.003)&&area<iw*ih*.88){cv.approxPolyDP(contour,approx,.022*per,true);
+if(area>Math.max(900,iw*ih*.0015)&&area<iw*ih*.88){cv.approxPolyDP(contour,approx,.032*per,true);
 if(approx.rows===4&&cv.isContourConvex(approx)){
 let pts=[];for(let j=0;j<4;j++)pts.push({x:approx.intPtr(j,0)[0],y:approx.intPtr(j,0)[1]});
 let xs=pts.map(p=>p.x),ys=pts.map(p=>p.y),bw=Math.max(...xs)-Math.min(...xs),bh=Math.max(...ys)-Math.min(...ys),ratio=Math.max(bw,bh)/Math.min(bw,bh);
 let border=pts.some(p=>p.x<ox+2||p.x>ox+iw-2||p.y<oy+2||p.y>oy+ih-2);
-if(ratio>1.35&&ratio<1.9&&!border&&bw>45&&bh>25)candidates.push({pts,score:area*(1-Math.min(.7,Math.abs(ratio-1.586)*.7))});
+if(ratio>1.32&&ratio<1.95&&!border&&bw>45&&bh>25)candidates.push({pts,score:area*(1-Math.min(.7,Math.abs(ratio-1.586)*.7))});
 }}
 approx.delete();contour.delete()}
 candidates.sort((a,b)=>b.score-a.score);
@@ -58,7 +58,7 @@ return selected.map(c=>{let pts=c.pts,cent={x:pts.reduce((v,p)=>v+p.x,0)/4,y:pts
 }catch(err){throw err}
 finally{for(let m of [src,gray,blur,edges,contours,hierarchy,kernel])if(m)try{m.delete()}catch(_){}}
 }
-function detect(e,side){let a=e[side],hint=$('card-'+e.id).querySelector('.hint-'+side);if(!a.img)return;try{let found=findCardContours(a.img);if(!found.length){let ratio=a.img.width/a.img.height;if(ratio>1.40&&ratio<1.83){let sc=Math.min(428/a.img.width,270/a.img.height),l=(428-a.img.width*sc)/2,t=(270-a.img.height*sc)/2;a.points=[{x:l,y:t},{x:l+a.img.width*sc,y:t},{x:l+a.img.width*sc,y:t+a.img.height*sc},{x:l,y:t+a.img.height*sc}];hint.textContent='Card outline not detected; using full uploaded image as provisional crop. Review A4 and adjust corners.';crop(e,side);return}hint.textContent='No reliable card outline found. Open Edit corners to select the card; A4 will stay blank until cropped.';a.output=null;draw(e,side);update();return}a.points=found[0].points;a.selecting=false;draw(e,side);hint.textContent='Auto detected. Cropping now…';crop(e,side)}catch(err){a.output=null;update();hint.textContent=err.message||'Detection failed. Use Edit corners.'}}
+function detect(e,side){let a=e[side],hint=$('card-'+e.id).querySelector('.hint-'+side);if(!a.img)return;try{let found=findCardContours(a.img);if(!found.length){hint.textContent='No reliable card outline found. Background will NOT be printed. Use Edit corners to select the four card edges.';a.output=null;draw(e,side);update();return}a.points=found[0].points;a.selecting=false;draw(e,side);hint.textContent='Auto detected. Cropping now…';crop(e,side)}catch(err){a.output=null;update();hint.textContent=err.message||'Detection failed. Use Edit corners.'}}
 function crop(e,side){let a=e[side],hint=$('card-'+e.id).querySelector('.hint-'+side);if(!a.img||a.points.length!==4){hint.textContent='Select 4 corners first';return}
 let im=a.img,scale=Math.min(428/im.width,270/im.height),ox=(428-im.width*scale)/2,oy=(270-im.height*scale)/2,p=a.points.map(t=>({x:(t.x-ox)/scale,y:(t.y-oy)/scale}));
 let out=document.createElement('canvas');out.width=Math.min(1600,Math.max(800,Math.round(Math.max(Math.hypot(p[1].x-p[0].x,p[1].y-p[0].y),Math.hypot(p[2].x-p[3].x,p[2].y-p[3].y)))));out.height=Math.round(out.width*54/85.6);hint.textContent='Cropping selected card area…';
