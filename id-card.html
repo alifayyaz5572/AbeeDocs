@@ -6,9 +6,10 @@ function download(type){if(!sides.front.img&&!sides.back.img){say('Upload at lea
 // Four-corner perspective crop: bilinear inverse map to remove the tabletop and straighten the photographed card.
 // This maps the selected quadrilateral to a standard card rectangle; it does not modify printed card information.
 function cropCorners(key){let a=sides[key];if(!a.img||a.points.length!==4){say('Select all 4 corners for '+key+' first.',true);return}
-let src=document.createElement('canvas');src.width=428;src.height=270;drawSide(key,src.getContext('2d'),428,270);
-let sw=src.width,sh=src.height,pix=src.getContext('2d').getImageData(0,0,sw,sh).data;
-let out=document.createElement('canvas');out.width=1024;out.height=646;let ctx=out.getContext('2d'),data=ctx.createImageData(out.width,out.height),d=data.data,p=a.points;
+let scale=(a.detecting?Math.min(428/a.img.width,270/a.img.height):Math.max(428/a.img.width,270/a.img.height))*a.z;
+let p=a.points.map(pt=>({x:(pt.x-214-a.x)/scale+a.img.width/2,y:(pt.y-135-a.y)/scale+a.img.height/2}));
+let sw=a.img.naturalWidth,sh=a.img.naturalHeight,src=document.createElement('canvas');src.width=sw;src.height=sh;let srcctx=src.getContext('2d',{willReadFrequently:true});srcctx.drawImage(a.img,0,0);let pix=srcctx.getImageData(0,0,sw,sh).data;
+let out=document.createElement('canvas');out.width=Math.min(1600,Math.max(1024,Math.round(Math.hypot(p[1].x-p[0].x,p[1].y-p[0].y))));out.height=Math.round(out.width*54/85.6);let ctx=out.getContext('2d'),data=ctx.createImageData(out.width,out.height),d=data.data;
 // Projective homography from unit square to selected quadrilateral.
 let dx1=p[1].x-p[2].x,dy1=p[1].y-p[2].y,dx2=p[3].x-p[2].x,dy2=p[3].y-p[2].y,dx3=p[0].x-p[1].x+p[2].x-p[3].x,dy3=p[0].y-p[1].y+p[2].y-p[3].y;
 let det=dx1*dy2-dx2*dy1;if(Math.abs(det)<1e-7){say('Corners are too close or incorrectly ordered.',true);return}
