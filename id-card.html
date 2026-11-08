@@ -129,7 +129,7 @@ try{
  let front=scans.find(v=>v.side==='front'),back=scans.find(v=>v.side==='back');
  let n=Math.min(5,Math.max(...scans.map(v=>v.found.length)));
  while(entries.length<n)add();
- let match=new Map(),unmatched=[];
+ let match=new Map(),unmatched=[],tentative=[];
  if(front&&back){
   status.textContent='Reading identity numbers locally to match Front and Back…';
   let frontNums=[],backNums=[];
@@ -154,6 +154,11 @@ try{
    let a=e.front;a.img=front.im;a.output=null;a.points=front.found[i].points;a.selecting=false;draw(e,'front');crop(e,'front');
   }
   let backIndex=front?match.get(i):i;
+  // When OCR cannot confirm a match, show the back at the same position as a tentative pair.
+  // This is not identity verification; the user must review before printing.
+  if(front&&back&&backIndex===undefined&&back.found[i]&&!Array.from(match.values()).includes(i)){
+   backIndex=i;tentative.push(i+1);
+  }
   if(back&&backIndex!==undefined&&back.found[backIndex]){
    let a=e.back;a.img=back.im;a.output=null;a.points=back.found[backIndex].points;a.selecting=false;draw(e,'back');crop(e,'back');
   }else if(front&&back){
@@ -161,7 +166,7 @@ try{
   }
  }
  status.textContent=front&&back?
- match.size+' front/back pair(s) verified by matching 13-digit ID numbers. '+(unmatched.length?'Unmatched front cards: '+unmatched.join(', ')+'. Add their back images manually.':'All detected pairs matched.') :
+ match.size+' pair(s) verified by ID number. '+(tentative.length?'Backs for card(s) '+tentative.join(', ')+' placed by sheet position ONLY (not verified). Check each Front/Back before printing. ':'')+(unmatched.filter(i=>!tentative.includes(i)).length?'Unmatched card(s): '+unmatched.filter(i=>!tentative.includes(i)).join(', ')+'. Add their backs manually.':'') :
  'Cards detected. Upload the other side to match by ID number.';
  update();
 }catch(err){status.textContent=(err.message||'Matching failed')+' — use manual front/back upload.'}
